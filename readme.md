@@ -36,7 +36,9 @@ Download Atom feed from URL:
 
 	$atom = Feed::loadAtom($url);
 
-
+-----
+Forked by emri99
+- Add guess of timestamp property on RSS Feed item for "bad" formatted RSS feed
 
 -----
 (c) David Grudl, 2008 (http://davidgrudl.com)

@@ -7,7 +7,7 @@
  * @copyright  Copyright (c) 2008 David Grudl
  * @license    New BSD License
  * @link       http://phpfashion.com/
- * @version    1.1
+ * @version    1.1.1
  */
 class Feed
 {
@@ -35,8 +35,14 @@ class Feed
 		if (!$xml->channel) {
 			throw new FeedException('Invalid channel.');
 		}
+		$xml->channel->type = 'RSS';
+		$attributes = $xml->attributes();
+		$xml->channel->version = @$attributes['version'];
 
 		self::adjustNamespaces($xml->channel);
+
+		// hold the item property used for timestamp definition on guess mode
+		$timestampProperty = null;
 
 		foreach ($xml->channel->item as $item) {
 			// converts namespaces to dotted tags
@@ -47,6 +53,22 @@ class Feed
 				$item->timestamp = strtotime($item->{'dc:date'});
 			} elseif (isset($item->pubDate)) {
 				$item->timestamp = strtotime($item->pubDate);
+			// guess timestamp property only on first item
+			} elseif ($timestampProperty && isset($item->$timestampProperty)) {
+				$item->timestamp = strtotime($item->$timestampProperty);
+			} else {
+				// guess the timestamp property for bad RSS feed assuming that 
+				// property containing the most recent date is the one to use
+				$ts = null;
+				foreach ($item as $property => $value) {
+					if (($current = strtotime($value)) && $current > $ts) {
+						$ts = $current;
+						$timestampProperty = $property;
+					}
+				}
+				if ($ts) {
+					$item->timestamp = $ts;
+				}
 			}
 		}
 
@@ -70,6 +92,7 @@ class Feed
 		if (!in_array('http://www.w3.org/2005/Atom', $xml->getDocNamespaces(), TRUE)) {
 			throw new FeedException('Invalid channel.');
 		}
+		$xml->type = 'ATOM';
 
 		// generate 'timestamp' tag
 		foreach ($xml->entry as $entry) {
